@@ -2,7 +2,7 @@
 
 A desktop application for water engineers to open, draw, edit and validate [Pywr](https://github.com/pywr/pywr) water resource model JSON files. Nodes are overlaid on a background map image on an interactive canvas.
 
-Runs entirely on your local machine — no internet connection required.
+Runs entirely on your local machine, no internet connection required.
 
 ---
 
