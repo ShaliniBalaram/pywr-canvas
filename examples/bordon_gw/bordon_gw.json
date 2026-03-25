@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "title": "Bordon Groundwater Minimal Model",
+    "description": "Minimal test model: single abstraction, treatment works, demand centre"
+  },
+  "timestepper": {
+    "start": "2020-01-01",
+    "end": "2020-12-31",
+    "timestep": 1
+  },
+  "nodes": [
+    {
+      "name": "Bordon_GW",
+      "type": "Input",
+      "max_flow": 5.0,
+      "cost": -10
+    },
+    {
+      "name": "Bordon_WTW",
+      "type": "Link",
+      "max_flow": 5.0,
+      "cost": 1.0
+    },
+    {
+      "name": "Bordon_DC",
+      "type": "Output",
+      "max_flow": 4.5,
+      "cost": -500
+    }
+  ],
+  "edges": [
+    { "from_node": "Bordon_GW",  "to_node": "Bordon_WTW" },
+    { "from_node": "Bordon_WTW", "to_node": "Bordon_DC"  }
+  ],
+  "parameters": {},
+  "recorders": {}
+}
