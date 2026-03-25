@@ -1,0 +1,16 @@
+# macOS metadata
+._*
+.DS_Store
+__MACOSX/
+
+node_modules/
+dist/
+release/
+build/
+__pycache__/
+*.pyc
+*.pyo
+python/dist/
+python/build/
+.venv/
+*.spec.bak
