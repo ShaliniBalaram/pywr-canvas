@@ -5,12 +5,11 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && electron .\"",
-    "dev:react": "react-scripts start",
-    "build:react": "react-scripts build",
+    "dev:react": "vite --port 3000",
+    "build:react": "vite build",
     "build:python": "cd python && pyinstaller pywr_canvas.spec --distpath dist --workpath build --noconfirm",
     "build:electron": "electron-builder --win --config electron-builder.config.js",
     "build": "npm run build:python && npm run build:react && npm run build:electron",
-    "test": "react-scripts test --watchAll=false",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,20 +21,12 @@
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^8.2.2",
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
-    "react-scripts": "5.0.1",
     "typescript": "^5.3.3",
+    "vite": "^5.4.0",
     "wait-on": "^7.2.0"
-  },
-  "browserslist": {
-    "production": [
-      "last 1 electron version"
-    ],
-    "development": [
-      "last 1 electron version"
-    ]
-  },
-  "homepage": "./"
+  }
 }
