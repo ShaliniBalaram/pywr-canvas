@@ -1,5 +1,5 @@
-// electron-builder.config.js — PyWR Canvas Windows installer configuration
-// Bundles pywr_backend.exe as an extraResource alongside the Electron app.
+// electron-builder.config.js — PyWR Canvas cross-platform build configuration
+// Bundles pywr_backend as an extraResource alongside the Electron app.
 
 module.exports = {
   appId: "com.pywrcanvas.app",
@@ -16,18 +16,18 @@ module.exports = {
     "package.json",
   ],
 
-  // pywr_backend.exe is placed at the root of resources/
-  // Electron main.js accesses it via path.join(process.resourcesPath, 'pywr_backend.exe')
-  extraResources: [
-    {
-      from: "python/dist/pywr_backend.exe",
-      to: "pywr_backend.exe",
-    },
-  ],
-
   win: {
     target: [{ target: "nsis", arch: ["x64"] }],
-    icon: "assets/icon.ico",
+    extraResources: [
+      { from: "python/dist/pywr_backend.exe", to: "pywr_backend.exe" },
+    ],
+  },
+
+  mac: {
+    target: [{ target: "dmg", arch: ["arm64", "x64"] }],
+    extraResources: [
+      { from: "python/dist/pywr_backend", to: "pywr_backend" },
+    ],
   },
 
   nsis: {
@@ -36,7 +36,5 @@ module.exports = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: "PyWR Canvas",
-    installerIcon: "assets/icon.ico",
-    uninstallerIcon: "assets/icon.ico",
   },
 };

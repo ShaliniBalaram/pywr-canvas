@@ -18,7 +18,8 @@ let pythonProcess = null;
 // ---------------------------------------------------------------------------
 function spawnPython() {
   if (app.isPackaged) {
-    const exePath = path.join(process.resourcesPath, 'pywr_backend.exe');
+    const exeName = process.platform === 'win32' ? 'pywr_backend.exe' : 'pywr_backend';
+    const exePath = path.join(process.resourcesPath, exeName);
     pythonProcess = spawn(exePath, [], { stdio: 'pipe' });
   } else {
     pythonProcess = spawn('python', ['python/server.py'], {
