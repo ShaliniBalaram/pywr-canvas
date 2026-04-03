@@ -21,57 +21,111 @@ export interface NodeShape {
 // NODE_COLOUR_MAP — one entry per Pywr node type from PYWR_SCHEMA.md
 // ---------------------------------------------------------------------------
 export const NODE_COLOUR_MAP: Record<string, string> = {
-  Input:                "#3B8BD4",  // blue
-  Catchment:            "#3B8BD4",  // blue
-  Link:                 "#EF9F27",  // amber
-  Output:               "#1D9E75",  // teal
-  Storage:              "#7F77DD",  // purple
-  VirtualStorage:       "#888780",  // grey
-  AnnualVirtualStorage: "#888780",  // grey
-  PiecewiseLink:        "#EF9F27",  // amber
-  AggregatedNode:       "#D85A30",  // coral
-  AggregatedStorage:    "#D85A30",  // coral
-  River:                "#5DCAA5",  // light teal
-  RiverGauge:           "#5DCAA5",  // light teal
-  RiverSplitWithGauge:  "#5DCAA5",  // light teal
+  // Core
+  Input:                    "#3B8BD4",  // blue
+  Catchment:                "#3B8BD4",  // blue
+  Discharge:                "#69C46A",  // light green
+  Link:                     "#EF9F27",  // amber
+  LossLink:                 "#E64980",  // pink
+  BreakLink:                "#868E96",  // grey
+  DelayNode:                "#BE4BDB",  // purple
+  Output:                   "#1D9E75",  // teal
+  // Multi-output
+  PiecewiseLink:            "#F76707",  // deep orange
+  MultiSplitLink:           "#F783AC",  // light pink
+  // Storage
+  Storage:                  "#7F77DD",  // purple
+  Reservoir:                "#74C0FC",  // light blue
+  // Virtual storage / licence
+  VirtualStorage:           "#888780",  // grey
+  AnnualVirtualStorage:     "#20C997",  // teal
+  SeasonalVirtualStorage:   "#0CA678",  // teal darker
+  MonthlyVirtualStorage:    "#099268",  // teal darkest
+  RollingVirtualStorage:    "#087F5B",  // forest teal
+  // Aggregation
+  AggregatedNode:           "#D85A30",  // coral
+  AggregatedStorage:        "#D85A30",  // coral
+  // River domain
+  River:                    "#5DCAA5",  // light teal
+  RiverGauge:               "#CC5DE8",  // violet
+  RiverSplit:               "#F06595",  // rose
+  RiverSplitWithGauge:      "#E599F7",  // light violet
+  // Groundwater
+  KeatingAquifer:           "#748FFC",  // indigo
 };
 
 // ---------------------------------------------------------------------------
 // NODE_SHAPE_MAP — one entry per Pywr node type
 // ---------------------------------------------------------------------------
 export const NODE_SHAPE_MAP: Record<string, NodeShape> = {
-  Input:                { shape: "diamond",   border: "solid" },
-  Catchment:            { shape: "diamond",   border: "solid" },
-  Link:                 { shape: "rectangle", border: "solid" },
-  Output:               { shape: "rectangle", border: "solid" },
-  Storage:              { shape: "circle",    border: "solid" },
-  VirtualStorage:       { shape: "circle",    border: "dashed" },
-  AnnualVirtualStorage: { shape: "rectangle", border: "dashed" },
-  PiecewiseLink:        { shape: "rectangle", border: "thick" },
-  AggregatedNode:       { shape: "hexagon",   border: "solid" },
-  AggregatedStorage:    { shape: "circle",    border: "solid" },
-  River:                { shape: "rectangle", border: "dashed" },
-  RiverGauge:           { shape: "rectangle", border: "dashed" },
-  RiverSplitWithGauge:  { shape: "diamond",   border: "solid" },
+  // Core
+  Input:                    { shape: "diamond",   border: "solid" },
+  Catchment:                { shape: "diamond",   border: "solid" },
+  Discharge:                { shape: "diamond",   border: "solid" },
+  Link:                     { shape: "rectangle", border: "solid" },
+  LossLink:                 { shape: "circle",    border: "solid" },
+  BreakLink:                { shape: "circle",    border: "dashed" },
+  DelayNode:                { shape: "rectangle", border: "solid" },
+  Output:                   { shape: "rectangle", border: "solid" },
+  // Multi-output
+  PiecewiseLink:            { shape: "rectangle", border: "thick" },
+  MultiSplitLink:           { shape: "rectangle", border: "thick" },
+  // Storage
+  Storage:                  { shape: "circle",    border: "solid" },
+  Reservoir:                { shape: "circle",    border: "solid" },
+  // Virtual storage / licence
+  VirtualStorage:           { shape: "circle",    border: "dashed" },
+  AnnualVirtualStorage:     { shape: "rectangle", border: "dashed" },
+  SeasonalVirtualStorage:   { shape: "rectangle", border: "dashed" },
+  MonthlyVirtualStorage:    { shape: "rectangle", border: "dashed" },
+  RollingVirtualStorage:    { shape: "rectangle", border: "dashed" },
+  // Aggregation
+  AggregatedNode:           { shape: "hexagon",   border: "solid" },
+  AggregatedStorage:        { shape: "circle",    border: "solid" },
+  // River domain
+  River:                    { shape: "rectangle", border: "dashed" },
+  RiverGauge:               { shape: "rectangle", border: "dashed" },
+  RiverSplit:               { shape: "diamond",   border: "solid" },
+  RiverSplitWithGauge:      { shape: "diamond",   border: "solid" },
+  // Groundwater
+  KeatingAquifer:           { shape: "rectangle", border: "solid" },
 };
 
 // ---------------------------------------------------------------------------
 // NODE_DISPLAY_LABELS — human-friendly name for each node type
 // ---------------------------------------------------------------------------
 export const NODE_DISPLAY_LABELS: Record<string, string> = {
-  Input:                "Input",
-  Catchment:            "Catchment",
-  Link:                 "Link",
-  Output:               "Output (Demand)",
-  Storage:              "Reservoir / Storage",
-  VirtualStorage:       "Virtual Storage",
-  AnnualVirtualStorage: "Annual Licence (VS)",
-  PiecewiseLink:        "Piecewise Link",
-  AggregatedNode:       "Aggregated Node",
-  AggregatedStorage:    "Aggregated Storage",
-  River:                "River",
-  RiverGauge:           "River Gauge",
-  RiverSplitWithGauge:  "River Split w/ Gauge",
+  // Core
+  Input:                    "Input",
+  Catchment:                "Catchment",
+  Discharge:                "Discharge",
+  Link:                     "Link",
+  LossLink:                 "Loss Link",
+  BreakLink:                "Break Link",
+  DelayNode:                "Delay Node",
+  Output:                   "Output (Demand)",
+  // Multi-output
+  PiecewiseLink:            "Piecewise Link",
+  MultiSplitLink:           "Multi-Split Link",
+  // Storage
+  Storage:                  "Storage",
+  Reservoir:                "Reservoir",
+  // Virtual storage / licence
+  VirtualStorage:           "Virtual Storage",
+  AnnualVirtualStorage:     "Annual Licence (VS)",
+  SeasonalVirtualStorage:   "Seasonal Licence (VS)",
+  MonthlyVirtualStorage:    "Monthly Licence (VS)",
+  RollingVirtualStorage:    "Rolling Licence (VS)",
+  // Aggregation
+  AggregatedNode:           "Aggregated Node",
+  AggregatedStorage:        "Aggregated Storage",
+  // River domain
+  River:                    "River",
+  RiverGauge:               "River Gauge",
+  RiverSplit:               "River Split",
+  RiverSplitWithGauge:      "River Split w/ Gauge",
+  // Groundwater
+  KeatingAquifer:           "Keating Aquifer",
 };
 
 // ---------------------------------------------------------------------------
@@ -80,19 +134,37 @@ export const NODE_DISPLAY_LABELS: Record<string, string> = {
 // All required fields from PYWR_SCHEMA.md are included.
 // ---------------------------------------------------------------------------
 export const NODE_DEFAULT_FIELDS: Record<string, Partial<PywrNode>> = {
-  Input:                { type: "Input" } as Partial<PywrNode>,
-  Catchment:            { type: "Catchment" } as Partial<PywrNode>,
-  Link:                 { type: "Link" } as Partial<PywrNode>,
-  Output:               { type: "Output" } as Partial<PywrNode>,
-  Storage:              { type: "Storage", max_volume: 0, initial_volume_pc: 1.0 } as Partial<PywrNode>,
-  VirtualStorage:       { type: "VirtualStorage", nodes: [] } as Partial<PywrNode>,
-  AnnualVirtualStorage: { type: "AnnualVirtualStorage", nodes: [], max_volume: 0 } as Partial<PywrNode>,
-  PiecewiseLink:        { type: "PiecewiseLink", nsteps: 2 } as Partial<PywrNode>,
-  AggregatedNode:       { type: "AggregatedNode", nodes: [] } as Partial<PywrNode>,
-  AggregatedStorage:    { type: "AggregatedStorage", storages: [] } as Partial<PywrNode>,
-  River:                { type: "River" } as Partial<PywrNode>,
-  RiverGauge:           { type: "RiverGauge" } as Partial<PywrNode>,
-  RiverSplitWithGauge:  { type: "RiverSplitWithGauge" } as Partial<PywrNode>,
+  // Core
+  Input:                    { type: "Input" } as Partial<PywrNode>,
+  Catchment:                { type: "Catchment" } as Partial<PywrNode>,
+  Discharge:                { type: "Discharge" } as Partial<PywrNode>,
+  Link:                     { type: "Link" } as Partial<PywrNode>,
+  LossLink:                 { type: "LossLink" } as Partial<PywrNode>,
+  BreakLink:                { type: "BreakLink" } as Partial<PywrNode>,
+  DelayNode:                { type: "DelayNode", days: 1 } as Partial<PywrNode>,
+  Output:                   { type: "Output" } as Partial<PywrNode>,
+  // Multi-output
+  PiecewiseLink:            { type: "PiecewiseLink", nsteps: 2 } as Partial<PywrNode>,
+  MultiSplitLink:           { type: "MultiSplitLink", nsteps: 2, extra_slots: 1 } as Partial<PywrNode>,
+  // Storage
+  Storage:                  { type: "Storage", max_volume: 0, initial_volume_pc: 1.0 } as Partial<PywrNode>,
+  Reservoir:                { type: "Reservoir", max_volume: 0, initial_volume_pc: 1.0 } as Partial<PywrNode>,
+  // Virtual storage / licence
+  VirtualStorage:           { type: "VirtualStorage", nodes: [] } as Partial<PywrNode>,
+  AnnualVirtualStorage:     { type: "AnnualVirtualStorage", nodes: [], max_volume: 0 } as Partial<PywrNode>,
+  SeasonalVirtualStorage:   { type: "SeasonalVirtualStorage", nodes: [] } as Partial<PywrNode>,
+  MonthlyVirtualStorage:    { type: "MonthlyVirtualStorage", nodes: [], months: 1 } as Partial<PywrNode>,
+  RollingVirtualStorage:    { type: "RollingVirtualStorage", nodes: [], days: 30 } as Partial<PywrNode>,
+  // Aggregation
+  AggregatedNode:           { type: "AggregatedNode", nodes: [] } as Partial<PywrNode>,
+  AggregatedStorage:        { type: "AggregatedStorage", storages: [] } as Partial<PywrNode>,
+  // River domain
+  River:                    { type: "River" } as Partial<PywrNode>,
+  RiverGauge:               { type: "RiverGauge" } as Partial<PywrNode>,
+  RiverSplit:               { type: "RiverSplit" } as Partial<PywrNode>,
+  RiverSplitWithGauge:      { type: "RiverSplitWithGauge" } as Partial<PywrNode>,
+  // Groundwater
+  KeatingAquifer:           { type: "KeatingAquifer", num_streams: 1, num_additional_inputs: 1 } as Partial<PywrNode>,
 };
 
 // Ordered list of all node types — used for palette iteration

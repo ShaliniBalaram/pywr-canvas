@@ -23,40 +23,54 @@ class ValidationIssue:
 # ---------------------------------------------------------------------------
 
 VALID_NODE_TYPES = {
-    "input",
-    "output",
-    "link",
-    "storage",
-    "virtualstorage",
-    "annualvirtualstorage",
-    "piecewiselink",
-    "aggregatednode",
-    "aggregatedstorage",
-    "river",
-    "rivergauge",
-    "catchment",
-    "riversplithwithgauge",  # "RiverSplitWithGauge".lower()
+    # Core
+    "input", "output", "link", "catchment", "discharge",
+    "losslink", "breaklink", "delaynode",
+    # Multi-output
+    "piecewiselink", "multisplitlink",
+    # Storage
+    "storage", "reservoir",
+    # Virtual storage / licence
+    "virtualstorage", "annualvirtualstorage", "seasonalvirtualstorage",
+    "monthlyvirtualstorage", "rollingvirtualstorage",
+    # Aggregation
+    "aggregatednode", "aggregatedstorage",
+    # River domain
+    "river", "rivergauge", "riversplit", "riversplithwithgauge",
+    # Groundwater
+    "keatingaquifer",
 }
 
 # Required fields per node type (name and type always required — checked separately)
 NODE_REQUIRED_FIELDS: dict[str, list[str]] = {
-    "input":                [],
-    "output":               [],
-    "link":                 [],
-    "storage":              ["max_volume"],
-    "virtualstorage":       ["nodes"],
-    "annualvirtualstorage": ["nodes", "max_volume"],
-    "piecewiselink":        ["nsteps"],
-    "aggregatednode":       ["nodes"],
-    "aggregatedstorage":    ["storages"],
-    "river":                [],
-    "rivergauge":           [],
-    "catchment":            [],
-    "riversplithwithgauge": [],
+    "input":                    [],
+    "output":                   [],
+    "link":                     [],
+    "catchment":                [],
+    "discharge":                [],
+    "losslink":                 [],
+    "breaklink":                [],
+    "delaynode":                [],
+    "piecewiselink":            ["nsteps"],
+    "multisplitlink":           [],
+    "storage":                  ["max_volume"],
+    "reservoir":                [],
+    "virtualstorage":           ["nodes"],
+    "annualvirtualstorage":     ["nodes", "max_volume"],
+    "seasonalvirtualstorage":   ["nodes"],
+    "monthlyvirtualstorage":    ["nodes"],
+    "rollingvirtualstorage":    ["nodes"],
+    "aggregatednode":           ["nodes"],
+    "aggregatedstorage":        ["storages"],
+    "river":                    [],
+    "rivergauge":               [],
+    "riversplit":               [],
+    "riversplithwithgauge":     [],
+    "keatingaquifer":           [],
 }
 
 # Node types that are "source" nodes (produce flow into the network)
-SOURCE_TYPES = {"input", "catchment"}
+SOURCE_TYPES = {"input", "catchment", "discharge"}
 
 # Node types that reference other nodes via fields rather than edges
 # — exempt from UNCONNECTED_NODE warning
@@ -65,6 +79,9 @@ VIRTUAL_TYPES = {
     "aggregatedstorage",
     "virtualstorage",
     "annualvirtualstorage",
+    "seasonalvirtualstorage",
+    "monthlyvirtualstorage",
+    "rollingvirtualstorage",
 }
 
 

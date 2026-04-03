@@ -7,12 +7,12 @@
     "dev": "concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && electron .\"",
     "dev:react": "vite --port 3000",
     "build:react": "vite build",
-    "build:python": "cd python && pyinstaller pywr_canvas.spec --distpath dist --workpath build --noconfirm",
     "build:electron": "electron-builder --config electron-builder.config.js",
-    "build": "npm run build:python && npm run build:react && npm run build:electron",
+    "build": "npm run build:react && npm run build:electron",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactflow": "^11.10.4"

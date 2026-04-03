@@ -1,12 +1,13 @@
 // src/components/Canvas.tsx
 // React Flow canvas — renders Pywr nodes as draggable RF nodes, edges as RF edges.
-// Background image rendered behind the canvas via absolutely positioned <img>.
+// Background image rendered using useViewport so it pans and zooms with the canvas.
 // Drag-and-drop from NodePalette creates nodes at the drop position.
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useMemo } from "react";
 import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
+  useViewport,
   Background,
   Controls,
   MiniMap,
@@ -20,7 +21,6 @@ import { PywrModel, PywrNode } from "../types/pywr";
 import {
   NODE_COLOUR_MAP,
   NODE_SHAPE_MAP,
-  NODE_DEFAULT_FIELDS,
 } from "../constants/nodeTypes";
 import { PywrNodeComponent } from "./PywrNode";
 
@@ -34,6 +34,8 @@ interface CanvasProps {
   backgroundOpacity: number;
   selectedNodeName: string | null;
   highlightedNodeName: string | null;
+  gridSize: number;
+  gridSnap: boolean;
   onNodeSelect: (name: string | null) => void;
   onNodeMove: (name: string, x: number, y: number) => void;
   onDeleteRequest: (name: string) => void;
@@ -73,7 +75,44 @@ function toRFEdges(model: PywrModel): RFEdge[] {
   }));
 }
 
-// Inner component — must be inside ReactFlowProvider to use useReactFlow
+// Background image that follows the ReactFlow viewport (pans and zooms with nodes).
+// Must be rendered inside ReactFlowProvider so useViewport() works.
+function ViewportImage({
+  src,
+  opacity,
+}: {
+  src: string;
+  opacity: number;
+}) {
+  const { x, y, zoom } = useViewport();
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        transformOrigin: "0 0",
+        transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+        pointerEvents: "none",
+        zIndex: 0,
+      }}
+    >
+      <img
+        src={src}
+        alt="background map"
+        style={{
+          display: "block",
+          maxWidth: "none",
+          opacity,
+        }}
+        // Let the image render at its natural size in flow-coordinate space.
+        // Users calibrate the grid to match the image's real-world scale.
+      />
+    </div>
+  );
+}
+
+// Inner component — must be inside ReactFlowProvider to use useReactFlow / useViewport
 function CanvasInner({
   model,
   positions,
@@ -81,6 +120,8 @@ function CanvasInner({
   backgroundOpacity,
   selectedNodeName,
   highlightedNodeName,
+  gridSize,
+  gridSnap,
   onNodeSelect,
   onNodeMove,
   onDeleteRequest,
@@ -88,11 +129,38 @@ function CanvasInner({
 }: CanvasProps) {
   const reactFlowInstance = useReactFlow();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const didFitView = useRef(false);
 
-  const rfNodes = model
-    ? toRFNodes(model, positions, selectedNodeName, highlightedNodeName)
-    : [];
-  const rfEdges = model ? toRFEdges(model) : [];
+  // Memoize node and edge arrays — prevents ReactFlow from re-reconciling
+  // every time a parent state change triggers a re-render.
+  const rfNodes = useMemo(
+    () =>
+      model
+        ? toRFNodes(model, positions, selectedNodeName, highlightedNodeName)
+        : [],
+    [model, positions, selectedNodeName, highlightedNodeName]
+  );
+
+  const rfEdges = useMemo(
+    () => (model ? toRFEdges(model) : []),
+    [model]
+  );
+
+  // Fit view once when the model first loads — not on every subsequent update.
+  useEffect(() => {
+    if (!model || didFitView.current) return;
+    // Short delay so ReactFlow has rendered the nodes before fitting
+    const timer = setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2 });
+      didFitView.current = true;
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [model, reactFlowInstance]);
+
+  // Reset the fitView guard when a new file is opened
+  useEffect(() => {
+    didFitView.current = false;
+  }, [model?.nodes.length === 0 ? null : model?.nodes[0]?.name]);
 
   // Update position when user drags a node
   const onNodeDragStop = useCallback(
@@ -138,7 +206,8 @@ function CanvasInner({
       if (!nodeType || !wrapperRef.current) return;
 
       const bounds = wrapperRef.current.getBoundingClientRect();
-      const position = reactFlowInstance.project({
+      // screenToFlowPosition replaces the deprecated project() in RF 11.10+
+      const position = reactFlowInstance.screenToFlowPosition({
         x: e.clientX - bounds.left,
         y: e.clientY - bounds.top,
       });
@@ -154,22 +223,12 @@ function CanvasInner({
       onDrop={onDrop}
       onDragOver={onDragOver}
     >
-      {/* Background map image — rendered behind React Flow */}
+      {/* Background map — rendered with viewport transform so it pans and zooms
+          in sync with the nodes. Placed before ReactFlow in DOM so it's behind. */}
       {backgroundImage && (
-        <img
+        <ViewportImage
           src={`file://${backgroundImage}`}
-          alt="background map"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: backgroundOpacity,
-            pointerEvents: "none",
-            zIndex: 0,
-          }}
+          opacity={backgroundOpacity}
         />
       )}
 
@@ -180,13 +239,19 @@ function CanvasInner({
         onNodeDragStop={onNodeDragStop}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
-        deleteKeyCode={null}  // disable built-in delete — we show the dialog instead
-        style={{ background: "transparent" }}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
+        deleteKeyCode={null}       // we show a confirmation dialog instead
+        snapToGrid={gridSnap}
+        snapGrid={[gridSize, gridSize]}
+        panOnDrag={true}           // drag on empty canvas to pan
+        zoomOnScroll={true}        // scroll wheel to zoom
+        zoomOnPinch={true}         // trackpad pinch to zoom
+        panOnScroll={false}        // keep scroll as zoom, not pan
+        minZoom={0.05}             // allow zooming far out to see full map
+        maxZoom={8}                // allow zooming in to trace fine detail
+        style={{ background: "transparent", position: "relative", zIndex: 1 }}
       >
         <Background color="#e0e0e0" gap={20} />
-        <Controls />
+        <Controls showInteractive={false} />
         <MiniMap zoomable pannable />
       </ReactFlow>
     </div>

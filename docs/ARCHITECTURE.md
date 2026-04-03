@@ -1,61 +1,128 @@
 # ARCHITECTURE.md — PyWR Canvas
 
-## Python Flask backend
+## Overview
 
-Base URL: http://localhost:47821/api
+PyWR Canvas is an Electron desktop app. All logic runs inside the Electron process —
+no external servers, no Python backend, no network ports.
 
-All routes accept and return JSON.
-All routes return { "ok": true, "data": ... } on success.
-All routes return { "ok": false, "error": "..." } on failure.
-HTTP status is always 200 — errors are in the response body.
+```
+┌─────────────────────────────────────────────┐
+│  Electron (Node.js)                          │
+│                                              │
+│  electron/main.js        — IPC handlers,     │
+│                            file I/O,         │
+│                            model validation  │
+│  electron/pywr_schema.js — validation rules  │
+│  electron/add_recorders.js — recorder logic  │
+│                                              │
+│  ┌──────────────────────────────────────┐   │
+│  │  React renderer (Vite / TypeScript)  │   │
+│  │                                      │   │
+│  │  src/App.tsx           — root        │   │
+│  │  src/hooks/            — state       │   │
+│  │  src/components/       — UI          │   │
+│  │  src/types/pywr.ts     — types       │   │
+│  │  src/constants/        — node config │   │
+│  └──────────────────────────────────────┘   │
+└─────────────────────────────────────────────┘
+```
 
-### Routes
+---
 
-POST /api/parse
-  Body:   { "json_path": "/absolute/path/to/model.json" }
-  Return: { "ok": true, "data": { "nodes": [...], "edges": [...],
-            "parameters": {...}, "recorders": {...}, "timestepper": {...} } }
-  Does:   Reads and parses the Pywr JSON file from disk.
-          Validates structure against pywr_schema.py.
-          Returns normalised node/edge lists.
+## IPC API
 
-POST /api/validate
-  Body:   { "model": { ...full pywr model object... } }
-  Return: { "ok": true, "data": { "warnings": [...], "errors": [...] } }
-  Does:   Validates the in-memory model object (not a file).
-          Checks: unconnected nodes, missing required fields,
-          invalid node types, duplicate node names, orphaned edges.
+The renderer calls `window.pywr.*` methods (defined in `electron/preload.js`).
+These forward to `ipcMain.handle` handlers in `electron/main.js`.
+There is no HTTP server — calls are direct in-process function calls.
 
-POST /api/add-recorders
-  Body:   { "model": { ...full pywr model object... } }
-  Return: { "ok": true, "data": { "model": { ...model with recorders added... },
-            "added": [ { "recorder_type": "...", "node": "..." }, ... ] } }
-  Does:   Adds appropriate NumpyArray recorders to all nodes that lack one.
-          Uses type-aware defaults (deficit recorder on _DC nodes, etc).
-          Does NOT write to disk — returns the modified model object.
+| Method | What it does |
+|--------|--------------|
+| `openFile()` | Native file picker → returns `.json` path |
+| `saveFile(path)` | Native save dialog → returns chosen path |
+| `openImage()` | Native file picker → returns image path |
+| `openCsv()` | Native file picker → returns `.csv` path |
+| `readCsvColumns(path)` | Reads first CSV row → returns column names |
+| `callApi(route, body)` | Dispatches to Node.js handler (see below) |
+| `saveLayoutFile(path, content)` | Writes `.layout.json` sidecar |
+| `readLayoutFile(path)` | Reads `.layout.json` sidecar |
 
-POST /api/export
-  Body:   { "model": { ...full pywr model object... },
-            "output_path": "/absolute/path/to/output.json" }
-  Return: { "ok": true, "data": { "written_to": "/absolute/path/..." } }
-  Does:   Validates the model, then writes clean Pywr JSON to output_path.
-          The layout sidecar (.layout.json) is written by the frontend,
-          not by this route.
+---
 
-## Electron ↔ React communication
+## API routes (handled in Node.js, not HTTP)
 
-Uses contextBridge (preload.js). React calls window.pywr.* methods.
-These are defined in preload.js and forward to ipcRenderer.
+All routes use the same request/response shape:
+- Success: `{ ok: true, data: ... }`
+- Failure: `{ ok: false, error: "..." }`
 
-window.pywr.openFile()         → opens native file picker, returns path string
-window.pywr.saveFile(path)     → opens native save picker, returns path string
-window.pywr.callApi(route, body) → calls Flask on localhost:47821, returns response
+### POST /api/parse
+```
+Body:   { json_path: "/absolute/path/to/model.json" }
+Return: { ok: true, data: { nodes, edges, parameters, recorders, timestepper, metadata } }
+```
+Reads and parses a Pywr JSON file from disk.
+
+### POST /api/validate
+```
+Body:   { model: { ...full pywr model... } }
+Return: { ok: true, data: { warnings: [...], errors: [...] } }
+```
+Validates the in-memory model. Checks: unconnected nodes, missing required fields,
+invalid node types, duplicate names, orphaned edges, unreachable demands.
+
+### POST /api/add-recorders
+```
+Body:   { model: { ...full pywr model... } }
+Return: { ok: true, data: { model: {...}, added: [...] } }
+```
+Adds NumpyArray recorders to nodes that lack one. Does not write to disk.
+
+### POST /api/export
+```
+Body:   { model: { ...full pywr model... }, output_path: "/absolute/path/..." }
+Return: { ok: true, data: { written_to: "/absolute/path/..." } }
+```
+Validates the model, then writes Pywr JSON to disk. Blocks on errors.
+
+---
 
 ## Data flow
 
-1. User opens file → window.pywr.openFile() → path sent to POST /api/parse
-2. Parse response → usePywrJson hook stores model in React state
-3. useLayout hook reads/writes .layout.json sidecar for node positions
-4. Canvas renders from React state (not from files directly)
-5. On save → POST /api/export writes model.json, frontend writes .layout.json
-6. On validate → POST /api/validate, warnings shown in ValidationBar
+```
+User opens file
+  → window.pywr.openFile()           [native dialog]
+  → window.pywr.callApi('/api/parse') [reads + parses JSON]
+  → usePywrJson stores model in React state
+  → useLayout reads .layout.json sidecar (node positions)
+  → Canvas renders from React state
+
+User edits node on canvas
+  → usePywrJson.updateNode()          [updates React state]
+  → ValidationBar re-validates automatically
+
+User edits JSON tab
+  → JsonEditor shows full model JSON in Monaco
+  → "Apply Changes" → usePywrJson.replaceModel() [full model swap]
+
+User saves
+  → window.pywr.callApi('/api/export') [validates + writes model.json]
+  → useLayout.saveLayout()             [writes .layout.json sidecar]
+```
+
+---
+
+## Key files
+
+| File | Role |
+|------|------|
+| `electron/main.js` | IPC handlers, API dispatch, file I/O |
+| `electron/pywr_schema.js` | Validation rules (port of pywr_schema.py) |
+| `electron/add_recorders.js` | Recorder injection logic |
+| `electron/preload.js` | contextBridge — exposes `window.pywr.*` |
+| `src/App.tsx` | Root component, wires all hooks and tabs |
+| `src/hooks/usePywrJson.ts` | Model state management |
+| `src/hooks/useLayout.ts` | Node positions, background image, layout sidecar |
+| `src/components/Canvas.tsx` | ReactFlow canvas with viewport-synced background image |
+| `src/components/JsonEditor.tsx` | Monaco JSON editor for parameters/recorders/tables |
+| `src/components/PropertiesPanel.tsx` | Node field editor with CSV linking |
+| `src/types/pywr.ts` | TypeScript interfaces for all Pywr node types |
+| `src/constants/nodeTypes.ts` | Node colours, shapes, labels, defaults |

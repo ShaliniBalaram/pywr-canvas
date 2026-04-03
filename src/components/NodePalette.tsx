@@ -19,12 +19,14 @@ interface NodePaletteProps {
 
 // Palette groups — order matches water engineering convention
 const PALETTE_GROUPS: Array<{ label: string; types: string[] }> = [
-  { label: "Sources",          types: ["Input", "Catchment"] },
-  { label: "Treatment",        types: ["Link"] },
-  { label: "Distribution",     types: ["Link", "PiecewiseLink"] },
+  { label: "Sources",          types: ["Input", "Catchment", "Discharge"] },
+  { label: "Flow Control",     types: ["Link", "LossLink", "BreakLink", "DelayNode"] },
+  { label: "Multi-Output",     types: ["PiecewiseLink", "MultiSplitLink"] },
   { label: "Demand",           types: ["Output"] },
-  { label: "Water Bodies",     types: ["River", "RiverGauge", "Storage"] },
-  { label: "Licence Tracking", types: ["AnnualVirtualStorage", "VirtualStorage"] },
+  { label: "Water Bodies",     types: ["Storage", "Reservoir", "River", "RiverGauge"] },
+  { label: "River Routing",    types: ["RiverSplit", "RiverSplitWithGauge"] },
+  { label: "Groundwater",      types: ["KeatingAquifer"] },
+  { label: "Licence Tracking", types: ["VirtualStorage", "AnnualVirtualStorage", "SeasonalVirtualStorage", "MonthlyVirtualStorage", "RollingVirtualStorage"] },
   { label: "Aggregation",      types: ["AggregatedNode", "AggregatedStorage"] },
 ];
 

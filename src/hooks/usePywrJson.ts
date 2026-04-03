@@ -15,6 +15,8 @@ declare global {
       callApi: (route: string, body: unknown) => Promise<unknown>;
       saveLayoutFile: (path: string, content: string) => Promise<void>;
       readLayoutFile: (path: string) => Promise<string | null>;
+      openCsv: () => Promise<string | null>;
+      readCsvColumns: (path: string) => Promise<string[]>;
     };
   }
 }
@@ -25,11 +27,14 @@ interface UsePywrJsonReturn {
   isLoading: boolean;
   error: string | null;
   openFile: () => Promise<void>;
+  replaceModel: (model: PywrModel) => void;
   addNode: (node: PywrNode) => void;
   removeNode: (nodeName: string) => void;
   updateNode: (nodeName: string, updates: Partial<PywrNode>) => void;
   addEdge: (from: string, to: string) => void;
   removeEdge: (from: string, to: string) => void;
+  addParameter: (name: string, def: unknown) => void;
+  removeParameter: (name: string) => void;
   getNodeByName: (name: string) => PywrNode | undefined;
   getEdgesForNode: (name: string) => Array<[string, string]>;
   getOrphanedNodes: (removedName: string) => { upstream: string[]; downstream: string[] };
@@ -73,6 +78,14 @@ export function usePywrJson(): UsePywrJsonReturn {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // replaceModel — swap the entire model (used by JSON editor tab)
+  // -------------------------------------------------------------------------
+  const replaceModel = useCallback((newModel: PywrModel) => {
+    setModel(newModel);
+    setIsDirty(true);
   }, []);
 
   // -------------------------------------------------------------------------
@@ -143,6 +156,26 @@ export function usePywrJson(): UsePywrJsonReturn {
         return true;
       });
       return { ...prev, edges };
+    });
+    setIsDirty(true);
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // addParameter / removeParameter — manage model.parameters entries
+  // -------------------------------------------------------------------------
+  const addParameter = useCallback((name: string, def: unknown) => {
+    setModel((prev) => {
+      if (!prev) return prev;
+      return { ...prev, parameters: { ...prev.parameters, [name]: def } };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const removeParameter = useCallback((name: string) => {
+    setModel((prev) => {
+      if (!prev) return prev;
+      const { [name]: _removed, ...rest } = prev.parameters;
+      return { ...prev, parameters: rest };
     });
     setIsDirty(true);
   }, []);
@@ -243,11 +276,14 @@ export function usePywrJson(): UsePywrJsonReturn {
     isLoading,
     error,
     openFile,
+    replaceModel,
     addNode,
     removeNode,
     updateNode,
     addEdge,
     removeEdge,
+    addParameter,
+    removeParameter,
     getNodeByName,
     getEdgesForNode,
     getOrphanedNodes,

@@ -1,67 +1,15 @@
 // electron/main.js — PyWR Canvas Electron main process
-// Port: 47821 (from ARCHITECTURE.md and CLAUDE.md)
+// All model logic (parse, validate, export, add-recorders) runs here in Node.js.
+// No Python or Flask required — Electron already bundles Node.js.
 
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
 const fs = require('fs');
-const http = require('http');
 
-const FLASK_PORT = 47821;
+const { validateModel } = require('./pywr_schema');
+const { addRecorders }  = require('./add_recorders');
+
 let mainWindow = null;
-let pythonProcess = null;
-
-// ---------------------------------------------------------------------------
-// Python backend spawn
-// dev:      python python/server.py   (from repo root)
-// packaged: process.resourcesPath/pywr_backend.exe
-// ---------------------------------------------------------------------------
-function spawnPython() {
-  if (app.isPackaged) {
-    const exeName = process.platform === 'win32' ? 'pywr_backend.exe' : 'pywr_backend';
-    const exePath = path.join(process.resourcesPath, exeName);
-    pythonProcess = spawn(exePath, [], { stdio: 'pipe' });
-  } else {
-    pythonProcess = spawn('python', ['python/server.py'], {
-      cwd: path.join(__dirname, '..'),
-      stdio: 'pipe',
-    });
-  }
-
-  pythonProcess.stdout.on('data', (d) => console.log('[Python]', d.toString().trim()));
-  pythonProcess.stderr.on('data', (d) => console.error('[Python]', d.toString().trim()));
-  pythonProcess.on('exit', (code) => console.log(`[Python] exited with code ${code}`));
-}
-
-// ---------------------------------------------------------------------------
-// Wait up to maxMs for Flask to respond, retrying every intervalMs
-// ---------------------------------------------------------------------------
-function waitForBackend(maxMs, intervalMs) {
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
-    function tryConnect() {
-      const req = http.get(`http://127.0.0.1:${FLASK_PORT}/`, () => {
-        resolve();
-      });
-      req.on('error', () => {
-        if (Date.now() - start >= maxMs) {
-          reject(new Error('Backend did not start within ' + maxMs + 'ms'));
-        } else {
-          setTimeout(tryConnect, intervalMs);
-        }
-      });
-      req.setTimeout(intervalMs, () => {
-        req.destroy();
-        if (Date.now() - start >= maxMs) {
-          reject(new Error('Backend did not start within ' + maxMs + 'ms'));
-        } else {
-          setTimeout(tryConnect, intervalMs);
-        }
-      });
-    }
-    tryConnect();
-  });
-}
 
 // ---------------------------------------------------------------------------
 // BrowserWindow creation
@@ -84,6 +32,110 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '..', 'build', 'index.html'));
   } else {
     mainWindow.loadURL('http://localhost:3000');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// API handlers — previously served by Flask, now run directly in Node.js
+// ---------------------------------------------------------------------------
+
+function apiParse(body) {
+  const jsonPath = body && body.json_path;
+  if (!jsonPath || typeof jsonPath !== 'string' || !jsonPath.trim()) {
+    return { ok: false, error: 'json_path is required' };
+  }
+  if (!path.isAbsolute(jsonPath)) {
+    return { ok: false, error: 'Path must be absolute' };
+  }
+  if (!fs.existsSync(jsonPath)) {
+    return { ok: false, error: `File not found: ${jsonPath}` };
+  }
+
+  let raw;
+  try { raw = fs.readFileSync(jsonPath, 'utf8'); }
+  catch (e) { return { ok: false, error: `Could not read file: ${e.message}` }; }
+
+  let model;
+  try { model = JSON.parse(raw); }
+  catch (e) { return { ok: false, error: `Invalid JSON: ${e.message}` }; }
+
+  if (!model || typeof model !== 'object' || Array.isArray(model)) {
+    return { ok: false, error: 'Model file must be a JSON object' };
+  }
+
+  return {
+    ok: true,
+    data: {
+      nodes:       Array.isArray(model.nodes)  ? model.nodes  : [],
+      edges:       Array.isArray(model.edges)  ? model.edges  : [],
+      parameters:  model.parameters  || {},
+      recorders:   model.recorders   || {},
+      timestepper: model.timestepper || {},
+      metadata:    model.metadata    || {},
+    },
+  };
+}
+
+function apiValidate(body) {
+  const model = body && body.model;
+  if (!model || typeof model !== 'object') {
+    return { ok: false, error: 'model is required' };
+  }
+
+  const issues = validateModel(model);
+  return {
+    ok: true,
+    data: {
+      warnings: issues.filter((i) => i.severity === 'warning'),
+      errors:   issues.filter((i) => i.severity === 'error'),
+    },
+  };
+}
+
+function apiAddRecorders(body) {
+  const model = body && body.model;
+  if (!model || typeof model !== 'object') {
+    return { ok: false, error: 'model is required' };
+  }
+
+  const { model: updatedModel, added } = addRecorders(model);
+  return { ok: true, data: { model: updatedModel, added } };
+}
+
+function apiExport(body) {
+  const model = body && body.model;
+  if (!model || typeof model !== 'object') {
+    return { ok: false, error: 'model is required' };
+  }
+
+  const outputPath = body.output_path;
+  if (!outputPath || typeof outputPath !== 'string' || !outputPath.trim()) {
+    return { ok: false, error: 'output_path is required' };
+  }
+  if (!path.isAbsolute(outputPath)) {
+    return { ok: false, error: 'output_path must be absolute' };
+  }
+
+  // Block export if model has errors
+  const issues = validateModel(model);
+  const errors = issues.filter((i) => i.severity === 'error');
+  if (errors.length) {
+    return { ok: false, error: `Model has ${errors.length} error(s) — fix before exporting` };
+  }
+
+  try { fs.writeFileSync(outputPath, JSON.stringify(model, null, 2), 'utf8'); }
+  catch (e) { return { ok: false, error: `Could not write file: ${e.message}` }; }
+
+  return { ok: true, data: { written_to: outputPath } };
+}
+
+function handleApiCall(route, body) {
+  switch (route) {
+    case '/api/parse':         return apiParse(body);
+    case '/api/validate':      return apiValidate(body);
+    case '/api/add-recorders': return apiAddRecorders(body);
+    case '/api/export':        return apiExport(body);
+    default:                   return { ok: false, error: `Unknown route: ${route}` };
   }
 }
 
@@ -121,37 +173,30 @@ ipcMain.handle('save-file', async (event, defaultPath) => {
   return result.canceled ? null : result.filePath;
 });
 
-// Forward API call to Flask backend on localhost:47821
-ipcMain.handle('call-api', (event, route, body) => {
-  return new Promise((resolve) => {
-    const payload = JSON.stringify(body);
-    const req = http.request(
-      {
-        hostname: '127.0.0.1',
-        port: FLASK_PORT,
-        path: route,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
-        },
-      },
-      (res) => {
-        let data = '';
-        res.on('data', (chunk) => { data += chunk; });
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(data));
-          } catch {
-            resolve({ ok: false, error: 'Invalid JSON response from backend' });
-          }
-        });
-      }
-    );
-    req.on('error', (err) => resolve({ ok: false, error: err.message }));
-    req.write(payload);
-    req.end();
+// Open native file picker for CSV files
+ipcMain.handle('open-csv', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select CSV Parameter File',
+    filters: [{ name: 'CSV Files', extensions: ['csv'] }],
+    properties: ['openFile'],
   });
+  return result.canceled || !result.filePaths.length ? null : result.filePaths[0];
+});
+
+// Read the header row of a CSV file — returns array of column names
+ipcMain.handle('read-csv-columns', (event, filePath) => {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const firstLine = content.split('\n')[0] || '';
+    return firstLine.split(',').map((col) => col.trim().replace(/^"|"$/g, ''));
+  } catch {
+    return [];
+  }
+});
+
+// Route API calls directly to Node.js handlers (no HTTP, no Flask)
+ipcMain.handle('call-api', (event, route, body) => {
+  return handleApiCall(route, body);
 });
 
 // Write a string to disk (used for .layout.json sidecar)
@@ -171,29 +216,8 @@ ipcMain.handle('read-layout-file', (event, filePath) => {
 // ---------------------------------------------------------------------------
 // App lifecycle
 // ---------------------------------------------------------------------------
-app.whenReady().then(async () => {
-  spawnPython();
+app.whenReady().then(() => {
   createWindow();
-
-  // Wait for the Flask backend before allowing the renderer to make API calls
-  try {
-    await waitForBackend(5000, 500);
-  } catch {
-    dialog.showErrorBox(
-      'Backend Failed to Start',
-      'The PyWR Canvas Python backend did not start within 5 seconds.\n\n' +
-      'Make sure Python 3.11 is installed and pywr is available.\n' +
-      'See DEV_SETUP.md for setup instructions.'
-    );
-  }
-});
-
-// Kill Python on quit — no orphan processes
-app.on('will-quit', () => {
-  if (pythonProcess) {
-    pythonProcess.kill();
-    pythonProcess = null;
-  }
 });
 
 app.on('window-all-closed', () => {

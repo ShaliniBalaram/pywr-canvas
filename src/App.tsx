@@ -10,16 +10,22 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { DeleteNodeDialog } from "./components/DeleteNodeDialog";
 import { ValidationBar } from "./components/ValidationBar";
 import { Toolbar } from "./components/Toolbar";
-import { PywrNode } from "./types/pywr";
+import { TabBar, AppTab } from "./components/TabBar";
+import { JsonEditor } from "./components/JsonEditor";
+import { PywrNode, PywrModel } from "./types/pywr";
 
 export default function App() {
   const pywrJson = usePywrJson();
   const layout = useLayout();
 
+  const [activeTab, setActiveTab] = useState<AppTab>("canvas");
   const [selectedNodeName, setSelectedNodeName] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [highlightedNodeName, setHighlightedNodeName] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [gridSize, setGridSize] = useState(20);
+  const [gridSnap, setGridSnap] = useState(false);
+  const [gridLocked, setGridLocked] = useState(false);
 
   const selectedNode = selectedNodeName
     ? pywrJson.getNodeByName(selectedNodeName)
@@ -100,6 +106,35 @@ export default function App() {
   );
 
   // -----------------------------------------------------------------------
+  // JSON editor tab — apply full model replacement
+  // -----------------------------------------------------------------------
+  const handleJsonApply = useCallback(
+    (newModel: PywrModel) => {
+      pywrJson.replaceModel(newModel);
+    },
+    [pywrJson]
+  );
+
+  // -----------------------------------------------------------------------
+  // CSV parameter linking — creates a named CSVParameter in model.parameters
+  // and sets the node field to the parameter name
+  // -----------------------------------------------------------------------
+  const handleLinkCsv = useCallback(
+    (fieldKey: string, csvPath: string, column: string) => {
+      if (!selectedNodeName) return;
+      const paramName = `${selectedNodeName}__${fieldKey}`;
+      pywrJson.addParameter(paramName, {
+        type: "CSVParameter",
+        url: csvPath,
+        column: column,
+        index_col: "Date",
+      });
+      pywrJson.updateNode(selectedNodeName, { [fieldKey]: paramName } as Partial<PywrNode>);
+    },
+    [pywrJson, selectedNodeName]
+  );
+
+  // -----------------------------------------------------------------------
   // Highlight a node from the validation bar for 2s
   // -----------------------------------------------------------------------
   const handleNodeHighlight = useCallback((name: string) => {
@@ -117,57 +152,87 @@ export default function App() {
         fontFamily: "sans-serif",
       }}
     >
-      {/* Top toolbar */}
+      {/* Top toolbar — always visible */}
       <Toolbar
         hasModel={!!pywrJson.model}
         isDirty={pywrJson.isDirty}
         backgroundOpacity={layout.backgroundOpacity}
         backgroundImage={layout.backgroundImage}
+        gridSize={gridSize}
+        gridSnap={gridSnap}
+        gridLocked={gridLocked}
         onOpen={handleOpen}
         onSave={handleSave}
         onLoadImage={handleLoadImage}
         onOpacityChange={layout.setBackgroundOpacity}
+        onGridSizeChange={setGridSize}
+        onGridSnapToggle={() => setGridSnap((s) => !s)}
+        onGridLockToggle={() => setGridLocked((l) => !l)}
       />
 
-      {/* Main content area */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Left: node palette */}
-        <NodePalette
-          model={pywrJson.model}
-          addNode={pywrJson.addNode}
-          setPosition={layout.setPosition}
-        />
+      {/* Tab bar */}
+      <TabBar
+        activeTab={activeTab}
+        hasModel={!!pywrJson.model}
+        onTabChange={setActiveTab}
+      />
 
-        {/* Centre: canvas */}
-        <Canvas
-          model={pywrJson.model}
-          positions={layout.positions}
-          backgroundImage={layout.backgroundImage}
-          backgroundOpacity={layout.backgroundOpacity}
-          selectedNodeName={selectedNodeName}
-          highlightedNodeName={highlightedNodeName}
-          onNodeSelect={setSelectedNodeName}
-          onNodeMove={layout.setPosition}
-          onDeleteRequest={setDeleteTarget}
-          onAddNode={handleAddNode}
-        />
+      {/* Main content — switches between tabs */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: "column" }}>
 
-        {/* Right: properties panel (only when a node is selected) */}
-        {selectedNode && (
-          <PropertiesPanel
-            node={selectedNode}
-            onUpdate={(updates) =>
-              pywrJson.updateNode(selectedNode.name, updates)
-            }
+        {/* Canvas tab */}
+        <div style={{ display: activeTab === "canvas" ? "flex" : "none", flex: 1, overflow: "hidden" }}>
+          {/* Left: node palette */}
+          <NodePalette
+            model={pywrJson.model}
+            addNode={pywrJson.addNode}
+            setPosition={layout.setPosition}
+          />
+
+          {/* Centre: canvas */}
+          <Canvas
+            model={pywrJson.model}
+            positions={layout.positions}
+            backgroundImage={layout.backgroundImage}
+            backgroundOpacity={layout.backgroundOpacity}
+            selectedNodeName={selectedNodeName}
+            highlightedNodeName={highlightedNodeName}
+            gridSize={gridSize}
+            gridSnap={gridSnap}
+            onNodeSelect={setSelectedNodeName}
+            onNodeMove={layout.setPosition}
+            onDeleteRequest={setDeleteTarget}
+            onAddNode={handleAddNode}
+          />
+
+          {/* Right: properties panel (only when a node is selected) */}
+          {selectedNode && (
+            <PropertiesPanel
+              node={selectedNode}
+              onUpdate={(updates) =>
+                pywrJson.updateNode(selectedNode.name, updates)
+              }
+              onLinkCsv={handleLinkCsv}
+            />
+          )}
+        </div>
+
+        {/* JSON editor tab */}
+        {activeTab === "json" && pywrJson.model && (
+          <JsonEditor
+            model={pywrJson.model}
+            onApply={handleJsonApply}
+          />
+        )}
+
+        {/* Validation bar — only on canvas tab */}
+        {activeTab === "canvas" && (
+          <ValidationBar
+            model={pywrJson.model}
+            onNodeHighlight={handleNodeHighlight}
           />
         )}
       </div>
-
-      {/* Bottom: validation bar */}
-      <ValidationBar
-        model={pywrJson.model}
-        onNodeHighlight={handleNodeHighlight}
-      />
 
       {/* Delete dialog (modal) */}
       {deleteTarget && pywrJson.model && (

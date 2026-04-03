@@ -136,10 +136,126 @@ export interface RiverSplitWithGaugeNode {
   mrf?: number;
   cost?: number;
   mrf_cost?: number;
-  // SCHEMA_GAP: factors field — likely inherited from RiverSplit, unverified
   factors?: number[];
-  // SCHEMA_GAP: slot_names field — likely inherited from RiverSplit, unverified
   slot_names?: string[];
+  comment?: string;
+}
+
+export interface LossLinkNode {
+  name: string;
+  type: "LossLink";
+  loss_factor?: FlowValue;
+  max_flow?: FlowValue;
+  min_flow?: FlowValue;
+  cost?: FlowValue;
+  comment?: string;
+}
+
+export interface DelayNode {
+  name: string;
+  type: "DelayNode";
+  days?: number;
+  initial_flow?: FlowValue;
+  comment?: string;
+}
+
+export interface BreakLinkNode {
+  name: string;
+  type: "BreakLink";
+  max_flow?: FlowValue;
+  min_flow?: FlowValue;
+  cost?: FlowValue;
+  comment?: string;
+}
+
+export interface MultiSplitLinkNode {
+  name: string;
+  type: "MultiSplitLink";
+  nsteps?: number;
+  extra_slots?: number;
+  costs?: number[];
+  max_flows?: FlowValue[];
+  comment?: string;
+}
+
+export interface SeasonalVirtualStorageNode {
+  name: string;
+  type: "SeasonalVirtualStorage";
+  nodes: string[];
+  max_volume?: number;
+  min_volume?: number;
+  initial_volume?: number;
+  initial_volume_pc?: number;
+  cost?: FlowValue;
+  factors?: number[];
+  reset_day?: number;
+  reset_month?: number;
+  end_day?: number;
+  end_month?: number;
+  comment?: string;
+}
+
+export interface MonthlyVirtualStorageNode {
+  name: string;
+  type: "MonthlyVirtualStorage";
+  nodes: string[];
+  max_volume?: number;
+  min_volume?: number;
+  initial_volume?: number;
+  initial_volume_pc?: number;
+  cost?: FlowValue;
+  factors?: number[];
+  months?: number;
+  comment?: string;
+}
+
+export interface RollingVirtualStorageNode {
+  name: string;
+  type: "RollingVirtualStorage";
+  nodes: string[];
+  max_volume?: number;
+  min_volume?: number;
+  initial_volume?: number;
+  initial_volume_pc?: number;
+  cost?: FlowValue;
+  factors?: number[];
+  days?: number;
+  comment?: string;
+}
+
+export interface DischargeNode {
+  name: string;
+  type: "Discharge";
+  flow?: FlowValue;
+  cost?: FlowValue;
+  comment?: string;
+}
+
+export interface ReservoirNode {
+  name: string;
+  type: "Reservoir";
+  max_volume?: FlowValue;
+  initial_volume?: number;
+  initial_volume_pc?: number;
+  min_volume?: FlowValue;
+  cost?: FlowValue;
+  comment?: string;
+}
+
+export interface RiverSplitNode {
+  name: string;
+  type: "RiverSplit";
+  factors?: number[];
+  slot_names?: string[];
+  cost?: FlowValue;
+  comment?: string;
+}
+
+export interface KeatingAquiferNode {
+  name: string;
+  type: "KeatingAquifer";
+  num_streams?: number;
+  num_additional_inputs?: number;
   comment?: string;
 }
 
@@ -157,7 +273,18 @@ export type PywrNode =
   | RiverNode
   | RiverGaugeNode
   | CatchmentNode
-  | RiverSplitWithGaugeNode;
+  | RiverSplitWithGaugeNode
+  | LossLinkNode
+  | DelayNode
+  | BreakLinkNode
+  | MultiSplitLinkNode
+  | SeasonalVirtualStorageNode
+  | MonthlyVirtualStorageNode
+  | RollingVirtualStorageNode
+  | DischargeNode
+  | ReservoirNode
+  | RiverSplitNode
+  | KeatingAquiferNode;
 
 // ---------- Edge interface ----------
 

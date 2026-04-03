@@ -9,10 +9,16 @@ interface ToolbarProps {
   isDirty: boolean;
   backgroundOpacity: number;
   backgroundImage: string | null;
+  gridSize: number;
+  gridSnap: boolean;
+  gridLocked: boolean;
   onOpen: () => void;
   onSave: () => void;
   onLoadImage: () => void;
   onOpacityChange: (opacity: number) => void;
+  onGridSizeChange: (size: number) => void;
+  onGridSnapToggle: () => void;
+  onGridLockToggle: () => void;
 }
 
 export function Toolbar({
@@ -20,10 +26,16 @@ export function Toolbar({
   isDirty,
   backgroundOpacity,
   backgroundImage,
+  gridSize,
+  gridSnap,
+  gridLocked,
   onOpen,
   onSave,
   onLoadImage,
   onOpacityChange,
+  onGridSizeChange,
+  onGridSnapToggle,
+  onGridLockToggle,
 }: ToolbarProps) {
   return (
     <div
@@ -69,7 +81,7 @@ export function Toolbar({
       <Separator />
 
       {/* Load Map Image */}
-      <ToolbarButton onClick={onLoadImage} disabled={!hasModel} title="Load background map image (PNG/JPG)">
+      <ToolbarButton onClick={onLoadImage} disabled={!hasModel} title="Load background map image (PNG/JPG) — then calibrate grid to trace network">
         Load Map
       </ToolbarButton>
 
@@ -98,6 +110,56 @@ export function Toolbar({
           <span style={{ color: "#bdc3c7", fontSize: 11, fontFamily: "monospace", minWidth: 28 }}>
             {Math.round(backgroundOpacity * 100)}%
           </span>
+        </div>
+      )}
+
+      <Separator />
+
+      {/* Grid calibration controls */}
+      <ToolbarButton
+        onClick={onGridSnapToggle}
+        disabled={!hasModel}
+        title="Snap nodes to grid when dragging/placing — helps trace network from a background map"
+        highlight={gridSnap}
+      >
+        {gridSnap ? "Snap ✓" : "Snap"}
+      </ToolbarButton>
+
+      {gridSnap && (
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ color: "#bdc3c7", fontSize: 11 }}>Grid</span>
+          <input
+            type="number"
+            min={5}
+            max={200}
+            step={5}
+            value={gridSize}
+            disabled={gridLocked}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (!isNaN(v) && v >= 5 && v <= 200) onGridSizeChange(v);
+            }}
+            title="Grid cell size in pixels"
+            style={{
+              width: 46,
+              fontSize: 11,
+              padding: "2px 4px",
+              borderRadius: 3,
+              border: "1px solid #506070",
+              backgroundColor: gridLocked ? "#3a3a3a" : "#3d5166",
+              color: gridLocked ? "#888" : "#ecf0f1",
+              textAlign: "center",
+              cursor: gridLocked ? "not-allowed" : "text",
+            }}
+          />
+          <span style={{ color: "#bdc3c7", fontSize: 11 }}>px</span>
+          <ToolbarButton
+            onClick={onGridLockToggle}
+            title={gridLocked ? "Unlock grid size" : "Lock grid size — prevents accidental changes after calibration"}
+            highlight={gridLocked}
+          >
+            {gridLocked ? "🔒" : "🔓"}
+          </ToolbarButton>
         </div>
       )}
     </div>

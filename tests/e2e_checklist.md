@@ -1,15 +1,12 @@
 # End-to-End Manual Test Checklist — PyWR Canvas
 
 Run these steps in order on a freshly started application.
-All steps assume `npm run dev` and `python python/server.py` are both running.
 
 ---
 
 ## Setup
 
 - [ ] `npm install` completed without errors
-- [ ] `python -m pip install flask flask-cors pywr` completed without errors
-- [ ] `python python/server.py` prints `PyWR Canvas backend started on port 47821`
 - [ ] `npm run dev` opens the Electron window with title "PyWR Canvas"
 
 ---
@@ -50,12 +47,8 @@ All steps assume `npm run dev` and `python python/server.py` are both running.
 
 - [ ] Click on **Bordon_WTW** to select it
 - [ ] Press the Delete key
-- [ ] Delete dialog appears showing:
-  - "↑ Upstream: Bordon_GW"
-  - "↓ Downstream: Bordon_DC"
-  - Three reconnect options
+- [ ] Delete dialog appears showing upstream and downstream nodes
 - [ ] Choose "Connect each upstream node directly to each downstream node"
-- [ ] Click Preview → "Will add edges: Bordon_GW → Bordon_DC"
 - [ ] Click Confirm Delete
 - [ ] Bordon_WTW is removed from canvas
 - [ ] Edge Bordon_GW → Bordon_DC is present
@@ -67,49 +60,69 @@ All steps assume `npm run dev` and `python python/server.py` are both running.
 
 - [ ] Click **Load Map** → native file picker appears (filters to PNG/JPG)
 - [ ] Select any PNG or JPG image
-- [ ] Image appears behind the network nodes
+- [ ] Image appears behind the network nodes and pans/zooms with the canvas
 - [ ] Opacity slider appears in toolbar
-- [ ] Move slider to far left → image nearly invisible (opacity ~10%)
-- [ ] Move slider to far right → image clearly visible (opacity ~90%)
-- [ ] Slider does not go below 0.1 or above 0.9
+- [ ] Move slider left → image nearly invisible; move right → clearly visible
 
 ---
 
-## 6 — Save and reload
+## 6 — Grid snap
+
+- [ ] Click **Snap** in the toolbar → button highlights
+- [ ] Drag a node → it snaps to grid increments
+- [ ] Change the grid size input → snap increments change accordingly
+- [ ] Click **🔒** → grid size input becomes disabled (locked)
+- [ ] Click **🔒** again → grid unlocks
+
+---
+
+## 7 — JSON tab
+
+- [ ] Click the **JSON** tab in the tab bar
+- [ ] Full model JSON appears in the Monaco editor
+- [ ] Edit a value (e.g. change a node name) — "Unsaved changes" label appears
+- [ ] Click **Apply Changes** → canvas updates
+- [ ] Introduce a syntax error (e.g. delete a `{`) → red error bar appears, Apply is disabled
+- [ ] Fix the error → Apply re-enables
+- [ ] Click **Discard** → editor reverts to canvas model
+
+---
+
+## 8 — CSV parameter linking
+
+- [ ] Open a model, click a node to select it
+- [ ] In the Properties panel, click **📎** next to Max Flow
+- [ ] Native CSV file picker appears
+- [ ] Select a CSV file → column dropdown appears
+- [ ] Choose a column and click **Link**
+- [ ] Max Flow field now shows the parameter name (e.g. `NodeName__max_flow`)
+- [ ] Switch to the JSON tab → `parameters` section contains a `CSVParameter` entry
+
+---
+
+## 9 — Save and reload
 
 - [ ] Click **Save** → native save dialog appears
 - [ ] Save to `test_output.json`
-- [ ] Toolbar shows "Save" (no asterisk — model is clean)
+- [ ] Toolbar shows "Save" (no asterisk)
 - [ ] Check that `test_output.layout.json` was created alongside `test_output.json`
 - [ ] Open `test_output.json` → model reloads with correct nodes/edges
 - [ ] Node positions match what was on screen before saving
 
 ---
 
-## 7 — Validation bar interaction
+## 10 — Validation bar interaction
 
-- [ ] Open `minimal_model.json` again
+- [ ] Open `minimal_model.json`
 - [ ] ValidationBar shows NO_RECORDER warnings for all nodes
-- [ ] Click on a warning pill → that node is highlighted (gold outline) for ~2 seconds
+- [ ] Click a warning pill → that node is highlighted (gold outline) for ~2 seconds
 
 ---
 
-## 8 — Python process management
-
-- [ ] Open Task Manager (Ctrl+Shift+Esc) while app is running
-- [ ] Find `python.exe` (or `pywr_backend.exe` in packaged build) in process list
-- [ ] Close the PyWR Canvas window
-- [ ] Python process is gone from Task Manager within a few seconds
-
----
-
-## 9 — Automated tests (run separately)
+## 11 — Type check
 
 ```bash
-# From repo root, with venv active:
-pytest python/tests/ -v
+npx tsc --noEmit
 ```
 
-- [ ] All tests in `test_e2e.py` pass
-- [ ] All tests in `test_schema.py` pass
-- [ ] `npx tsc --noEmit` reports zero errors
+- [ ] Zero TypeScript errors

@@ -11,4 +11,6 @@ contextBridge.exposeInMainWorld('pywr', {
   callApi: (route, body)              => ipcRenderer.invoke('call-api', route, body),
   saveLayoutFile: (filePath, content) => ipcRenderer.invoke('save-layout-file', filePath, content),
   readLayoutFile: (filePath)          => ipcRenderer.invoke('read-layout-file', filePath),
+  openCsv: ()                         => ipcRenderer.invoke('open-csv'),
+  readCsvColumns: (filePath)          => ipcRenderer.invoke('read-csv-columns', filePath),
 });
