@@ -1,68 +1,68 @@
 #!/usr/bin/env python3
 """
-Build script — creates a standalone PyWR Canvas desktop app for the current platform.
+PyWR Canvas — build script
+Produces a standalone installer that requires nothing installed to run.
 
 Usage:
     python build.py
 
-Requirements:
-    pip install pyinstaller
-    npm install  (run once to install Node dependencies)
+Output:
+    Windows → release/PyWR Canvas Setup <version>.exe
+    Mac     → release/PyWR Canvas-<version>.dmg
 """
 
 import subprocess
 import sys
-import platform
 import os
+import shutil
+import platform
 
-REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
-def run(cmd, **kwargs):
-    print(f"\n> {' '.join(cmd) if isinstance(cmd, list) else cmd}")
-    subprocess.check_call(cmd, **kwargs)
+def run(cmd, description):
+    print(f"\n>>> {description}")
+    result = subprocess.run(cmd, shell=True, cwd=ROOT)
+    if result.returncode != 0:
+        print(f"\nFailed at: {description}")
+        sys.exit(result.returncode)
+
+
+def check_node():
+    if shutil.which("node") is None:
+        print("Error: Node.js is not installed.")
+        print("Download from: https://nodejs.org/en/download")
+        print("Install it once, then run this script again.")
+        sys.exit(1)
+    result = subprocess.run("node --version", shell=True, capture_output=True, text=True)
+    print(f"Node.js {result.stdout.strip()} found.")
 
 
 def main():
-    os.chdir(REPO_ROOT)
-    os_name = platform.system()
-    print(f"Building PyWR Canvas for {os_name}...\n")
+    print("=" * 50)
+    print(f"  PyWR Canvas — Build ({platform.system()})")
+    print("=" * 50)
 
-    # 1. Ensure PyInstaller is available
-    try:
-        import PyInstaller  # noqa: F401
-    except ImportError:
-        print("Installing PyInstaller...")
-        run([sys.executable, "-m", "pip", "install", "pyinstaller"])
+    check_node()
 
-    # 2. Bundle Python backend
-    print("\n--- Step 1/3: Bundling Python backend ---")
-    run([
-        sys.executable, "-m", "PyInstaller",
-        "python/pywr_canvas.spec",
-        "--distpath", "python/dist",
-        "--workpath", "python/build",
-        "--noconfirm",
-    ])
+    run("npm install",        "Installing dependencies")
+    run("npm run build:react",    "Building React app")
+    run("npm run build:electron", "Packaging installer")
 
-    # 3. Build React frontend
-    print("\n--- Step 2/3: Building React frontend ---")
-    run(["npm", "run", "build:react"])
+    release_dir = os.path.join(ROOT, "release")
+    print("\n" + "=" * 50)
+    print("  Build complete!")
+    print(f"  Output folder: {release_dir}")
+    print("=" * 50)
 
-    # 4. Package with Electron
-    print("\n--- Step 3/3: Packaging Electron app ---")
-    run(["npm", "run", "build:electron"])
+    if os.path.isdir(release_dir):
+        for f in os.listdir(release_dir):
+            if f.endswith((".exe", ".dmg")):
+                size_mb = os.path.getsize(os.path.join(release_dir, f)) / 1_000_000
+                print(f"  {f}  ({size_mb:.0f} MB)")
 
-    # Report output
-    release_dir = os.path.join(REPO_ROOT, "release")
-    print(f"\n{'='*50}")
-    print("  BUILD SUCCESSFUL")
-    print(f"  Output: {release_dir}")
-    if os_name == "Darwin":
-        print("  Look for a .dmg file — open it to install the app.")
-    elif os_name == "Windows":
-        print("  Look for a Setup .exe file to install the app.")
-    print(f"{'='*50}\n")
+    print("\nShare the installer file.")
+    print("Users just double-click it — no Node.js, no Python, no terminal.\n")
 
 
 if __name__ == "__main__":
